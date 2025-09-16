@@ -46,7 +46,7 @@ class WebsiteBuilder:
             str(self.output_path)
         )
         
-        self.site_url = config.get('site_url', 'https://example.github.io')
+        self.site_url = config.get('site_url', 'https://novel.myfreenovel.com')
         
     def build_website(self, force_rebuild: bool = False, novel_filter: Optional[str] = None):
         """构建完整网站"""
@@ -436,7 +436,7 @@ def main():
     parser.add_argument('--templates', default='tools/templates', help='模板目录')
     parser.add_argument('--force', action='store_true', help='强制重建所有页面')
     parser.add_argument('--novel', help='只构建指定的小说（标题包含此字符串）')
-    parser.add_argument('--site-url', default='https://example.github.io', help='网站URL')
+    parser.add_argument('--site-url', default='https://novel.myfreenovel.com', help='网站URL')
     parser.add_argument('--incremental', action='store_true', help='增量构建（只构建有变化的内容）')
     
     args = parser.parse_args()
@@ -451,13 +451,23 @@ def main():
         except Exception as e:
             print(f"警告: 无法读取config.json: {e}")
     
+    # 从config.json中获取site_url，优先使用site.url，其次site_url
+    site_url_from_config = None
+    if file_config:
+        # 优先使用 site.url（标准配置格式）
+        if 'site' in file_config and 'url' in file_config['site']:
+            site_url_from_config = file_config['site']['url']
+        # 备用：直接读取 site_url
+        elif 'site_url' in file_config:
+            site_url_from_config = file_config['site_url']
+    
     # 配置（文件配置 + 命令行参数覆盖）
     config = {
         'base_path': os.getcwd(),
         'source_path': args.source,
         'output_path': args.output,
         'templates_path': args.templates,
-        'site_url': file_config.get('site_url', args.site_url)
+        'site_url': site_url_from_config or args.site_url
     }
     
     # 构建网站
