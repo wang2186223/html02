@@ -441,13 +441,23 @@ def main():
     
     args = parser.parse_args()
     
-    # 配置
+    # 先从config.json读取配置
+    config_file = Path(os.getcwd()) / 'config.json'
+    file_config = {}
+    if config_file.exists():
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                file_config = json.load(f)
+        except Exception as e:
+            print(f"警告: 无法读取config.json: {e}")
+    
+    # 配置（文件配置 + 命令行参数覆盖）
     config = {
         'base_path': os.getcwd(),
         'source_path': args.source,
         'output_path': args.output,
         'templates_path': args.templates,
-        'site_url': args.site_url
+        'site_url': file_config.get('site_url', args.site_url)
     }
     
     # 构建网站
