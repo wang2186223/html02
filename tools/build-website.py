@@ -374,19 +374,22 @@ class WebsiteBuilder:
         urlset.set('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
         
         # 添加首页
-        self.add_url_to_sitemap(urlset, '', priority='1.0', changefreq='daily')
+        index_file_path = self.output_path / 'index.html'
+        self.add_url_to_sitemap(urlset, '', priority='1.0', changefreq='daily', file_path=index_file_path)
         
         # 添加小说详情页和章节页
         for novel_data in novels.values():
             novel_url = f"novels/{novel_data['slug']}/"
             
             # 小说详情页
-            self.add_url_to_sitemap(urlset, novel_url, priority='0.8', changefreq='weekly')
+            novel_index_path = self.output_path / 'novels' / novel_data['slug'] / 'index.html'
+            self.add_url_to_sitemap(urlset, novel_url, priority='0.8', changefreq='weekly', file_path=novel_index_path)
             
             # 章节页面
             for chapter in novel_data['chapters']:
                 chapter_url = f"novels/{novel_data['slug']}/chapter-{chapter['number']}.html"
-                self.add_url_to_sitemap(urlset, chapter_url, priority='0.6', changefreq='monthly')
+                chapter_file_path = self.output_path / 'novels' / novel_data['slug'] / f"chapter-{chapter['number']}.html"
+                self.add_url_to_sitemap(urlset, chapter_url, priority='0.6', changefreq='monthly', file_path=chapter_file_path)
                 
         # 保存站点地图
         tree = ET.ElementTree(urlset)
@@ -395,7 +398,7 @@ class WebsiteBuilder:
         print(f"生成站点地图: {sitemap_file}")
         
     def add_url_to_sitemap(self, urlset: ET.Element, path: str, 
-                          priority: str = '0.5', changefreq: str = 'monthly'):
+                          priority: str = '0.5', changefreq: str = 'monthly', file_path: Optional[Path] = None):
         """添加URL到站点地图"""
         url_elem = ET.SubElement(urlset, 'url')
         
@@ -403,7 +406,15 @@ class WebsiteBuilder:
         loc.text = f"{self.site_url}/{path}"
         
         lastmod = ET.SubElement(url_elem, 'lastmod')
-        lastmod.text = datetime.now().strftime('%Y-%m-%d')
+        
+        # 如果提供了文件路径且文件存在，使用文件的修改时间
+        if file_path and file_path.exists():
+            file_mtime = file_path.stat().st_mtime
+            lastmod_date = datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d')
+            lastmod.text = lastmod_date
+        else:
+            # 默认使用当前时间
+            lastmod.text = datetime.now().strftime('%Y-%m-%d')
         
         changefreq_elem = ET.SubElement(url_elem, 'changefreq')
         changefreq_elem.text = changefreq
