@@ -46,7 +46,7 @@ class WebsiteBuilder:
             str(self.output_path)
         )
         
-        self.site_url = config.get('site_url', 'https://novel.myfreenovel.com')
+        self.site_url = config.get('site_url', 'https://example.github.io')
         
     def build_website(self, force_rebuild: bool = False, novel_filter: Optional[str] = None):
         """构建完整网站"""
@@ -374,22 +374,19 @@ class WebsiteBuilder:
         urlset.set('xmlns', 'http://www.sitemaps.org/schemas/sitemap/0.9')
         
         # 添加首页
-        index_file_path = self.output_path / 'index.html'
-        self.add_url_to_sitemap(urlset, '', priority='1.0', changefreq='daily', file_path=index_file_path)
+        self.add_url_to_sitemap(urlset, '', priority='1.0', changefreq='daily')
         
         # 添加小说详情页和章节页
         for novel_data in novels.values():
             novel_url = f"novels/{novel_data['slug']}/"
             
             # 小说详情页
-            novel_index_path = self.output_path / 'novels' / novel_data['slug'] / 'index.html'
-            self.add_url_to_sitemap(urlset, novel_url, priority='0.8', changefreq='weekly', file_path=novel_index_path)
+            self.add_url_to_sitemap(urlset, novel_url, priority='0.8', changefreq='weekly')
             
             # 章节页面
             for chapter in novel_data['chapters']:
                 chapter_url = f"novels/{novel_data['slug']}/chapter-{chapter['number']}.html"
-                chapter_file_path = self.output_path / 'novels' / novel_data['slug'] / f"chapter-{chapter['number']}.html"
-                self.add_url_to_sitemap(urlset, chapter_url, priority='0.6', changefreq='monthly', file_path=chapter_file_path)
+                self.add_url_to_sitemap(urlset, chapter_url, priority='0.6', changefreq='monthly')
                 
         # 保存站点地图
         tree = ET.ElementTree(urlset)
@@ -398,7 +395,7 @@ class WebsiteBuilder:
         print(f"生成站点地图: {sitemap_file}")
         
     def add_url_to_sitemap(self, urlset: ET.Element, path: str, 
-                          priority: str = '0.5', changefreq: str = 'monthly', file_path: Optional[Path] = None):
+                          priority: str = '0.5', changefreq: str = 'monthly'):
         """添加URL到站点地图"""
         url_elem = ET.SubElement(urlset, 'url')
         
@@ -406,15 +403,7 @@ class WebsiteBuilder:
         loc.text = f"{self.site_url}/{path}"
         
         lastmod = ET.SubElement(url_elem, 'lastmod')
-        
-        # 如果提供了文件路径且文件存在，使用文件的修改时间
-        if file_path and file_path.exists():
-            file_mtime = file_path.stat().st_mtime
-            lastmod_date = datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d')
-            lastmod.text = lastmod_date
-        else:
-            # 默认使用当前时间
-            lastmod.text = datetime.now().strftime('%Y-%m-%d')
+        lastmod.text = datetime.now().strftime('%Y-%m-%d')
         
         changefreq_elem = ET.SubElement(url_elem, 'changefreq')
         changefreq_elem.text = changefreq
@@ -447,38 +436,18 @@ def main():
     parser.add_argument('--templates', default='tools/templates', help='模板目录')
     parser.add_argument('--force', action='store_true', help='强制重建所有页面')
     parser.add_argument('--novel', help='只构建指定的小说（标题包含此字符串）')
-    parser.add_argument('--site-url', default='https://novel.myfreenovel.com', help='网站URL')
+    parser.add_argument('--site-url', default='https://example.github.io', help='网站URL')
     parser.add_argument('--incremental', action='store_true', help='增量构建（只构建有变化的内容）')
     
     args = parser.parse_args()
     
-    # 先从config.json读取配置
-    config_file = Path(os.getcwd()) / 'config.json'
-    file_config = {}
-    if config_file.exists():
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                file_config = json.load(f)
-        except Exception as e:
-            print(f"警告: 无法读取config.json: {e}")
-    
-    # 从config.json中获取site_url，优先使用site.url，其次site_url
-    site_url_from_config = None
-    if file_config:
-        # 优先使用 site.url（标准配置格式）
-        if 'site' in file_config and 'url' in file_config['site']:
-            site_url_from_config = file_config['site']['url']
-        # 备用：直接读取 site_url
-        elif 'site_url' in file_config:
-            site_url_from_config = file_config['site_url']
-    
-    # 配置（文件配置 + 命令行参数覆盖）
+    # 配置
     config = {
         'base_path': os.getcwd(),
         'source_path': args.source,
         'output_path': args.output,
         'templates_path': args.templates,
-        'site_url': site_url_from_config or args.site_url
+        'site_url': args.site_url
     }
     
     # 构建网站
